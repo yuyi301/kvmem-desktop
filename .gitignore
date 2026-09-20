@@ -1,0 +1,9 @@
+KVMem.exe
+settings.json
+logs/
+self-test.txt
+error.txt
+preview-1.png
+preview-2.png
+*.zip
+

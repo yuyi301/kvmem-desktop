@@ -1,0 +1,14 @@
+{
+  "Executable": "D:\\Apps\\kvmem\\bin\\llama-kvmem-server.exe",
+  "Model": "D:\\Models\\RVN-IQ3_XXS-mtp.gguf",
+  "Node": "node.exe",
+  "LanEnabled": true,
+  "Thinking": true,
+  "Context": 262144,
+  "Budget": 45056,
+  "Reserve": 20480,
+  "ThinkingBudget": 16384,
+  "LanAddress": "192.168.1.100",
+  "LanPrefix": 24
+}
+
