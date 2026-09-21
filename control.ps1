@@ -34,6 +34,12 @@ if (!$serverAlive) {
         '--reasoning-effort', 'medium', '--reasoning-budget', $cfg.ThinkingBudget,
         '--temp', '1.0', '--top-p', '0.95', '--top-k', '20', '--min-p', '0.0',
         '--presence-penalty', '0.0', '--frequency-penalty', '0.0', '--repeat-penalty', '1.0')
+    if ($cfg.VisionEnabled) {
+        if (!(Test-Path -LiteralPath $cfg.Mmproj -PathType Leaf)) { throw 'Vision projector GGUF not found' }
+        if ([int]$cfg.ImageMaxTokens -lt 64 -or [int]$cfg.ImageMaxTokens -gt 4096) { throw 'Image token limit must be 64-4096' }
+        $arguments += @('--mmproj', ('"' + $cfg.Mmproj + '"'), '--image-max-tokens', [int]$cfg.ImageMaxTokens)
+        $arguments += if ($cfg.VisionGpu) { '--mmproj-offload' } else { '--no-mmproj-offload' }
+    }
     $arguments += if ($cfg.Thinking) { '--enable-thinking' } else { '--no-think' }
     $env:CUDA_VISIBLE_DEVICES = '0'
     $p = Start-Process -FilePath $cfg.Executable -ArgumentList $arguments -WorkingDirectory $root -WindowStyle Hidden -RedirectStandardOutput (Join-Path $logs 'server-out.log') -RedirectStandardError (Join-Path $logs 'server.log') -PassThru

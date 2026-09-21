@@ -1,14 +1,18 @@
 {
-  "Executable": "D:\\Apps\\kvmem\\bin\\llama-kvmem-server.exe",
-  "Model": "D:\\Models\\RVN-IQ3_XXS-mtp.gguf",
+  "Executable": "",
+  "Model": "",
   "Node": "node.exe",
-  "LanEnabled": true,
+  "LanEnabled": false,
   "Thinking": true,
+  "VisionEnabled": false,
+  "Mmproj": "",
+  "VisionGpu": false,
+  "ImageMaxTokens": 512,
   "Context": 262144,
   "Budget": 45056,
   "Reserve": 20480,
   "ThinkingBudget": 16384,
-  "LanAddress": "192.168.1.100",
+  "LanAddress": "",
   "LanPrefix": 24
 }
 

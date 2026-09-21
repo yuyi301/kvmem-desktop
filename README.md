@@ -14,6 +14,7 @@ It starts `llama-kvmem-server`, exposes its OpenAI-compatible endpoint, and prov
 - Copy local and LAN endpoint addresses.
 - Create or revoke a subnet-scoped Windows Firewall rule for ports `18200` and `18201`.
 - Show the KVMem runtime log.
+- Load a matching `mmproj` vision projector and accept image inputs through the OpenAI-compatible API.
 - Serve a text-only Ollama-compatible API at port `18201` without loading a second copy of the model.
 
 ## Requirements
@@ -42,6 +43,14 @@ The default tested profile is:
 - Thinking budget: `16384`
 
 The total context includes prompts, history, thinking, and output. A single generation cannot exceed the configured reserve.
+
+## Vision
+
+Open **视觉设置** in the launcher, enable vision, and select the matching `mmproj` GGUF. On a 16 GB GPU, leave **使用 GPU 编码图片** off initially: the projector runs on CPU and preserves VRAM for the language model. The tested starting point is `512` image tokens per image.
+
+![Vision settings](preview-vision.png)
+
+Send images through the OpenAI-compatible `POST /v1/chat/completions` endpoint using `image_url` message content. The Ollama bridge remains text-only.
 
 ## DSH Desktop / OpenAI-compatible clients
 
@@ -86,8 +95,9 @@ With `RVN-IQ3_XXS-mtp.gguf`, RTX 4070 Ti SUPER 16 GB, and 64 GB RAM:
 | Short Chinese response | 50.7 tokens/s |
 | Generation after a ~250K-token prompt | 36.4 tokens/s |
 | Follow-up with ~250K cached history | 35.1 tokens/s; 8.45 s total |
+| Fresh 261K-token image + text request | Completed in 5m 55s; 57.5 tokens/s generation |
 
-The initial ~250K-token prefill took about 5 minutes 39 seconds. This used repetitive synthetic text with thinking disabled; it verifies capacity and cache reuse, not retrieval accuracy on real documents.
+The 261K-token image + text run used a 640×480 synthetic image and repetitive synthetic text with thinking disabled. It consumed 261,382 prompt tokens plus 47 output tokens, correctly recognized the image, and used about 15.2 GiB of 16.4 GiB VRAM. It verifies capacity and basic multimodal behavior, not retrieval accuracy on real documents.
 
 ## Build
 
