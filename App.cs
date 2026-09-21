@@ -18,6 +18,7 @@ public class Settings {
  public string Model="";
  public string Node="node.exe";
  public bool LanEnabled=true,Thinking=true;
+ public bool VisionEnabled=false,VisionGpu=false; public string Mmproj=""; public int ImageMaxTokens=512;
  public int Context=262144,Budget=45056,Reserve=20480,ThinkingBudget=16384;
  public string LanAddress=""; public int LanPrefix=24;
 }
@@ -38,6 +39,15 @@ public class App:Form {
   Controls.Add(L("QWEN 27B  ·  KVMEM 256K",650,45,340,28,11,accent));
   tabs=new TabControl{Location=new Point(26,118),Size=new Size(968,565),Anchor=AnchorStyles.Top|AnchorStyles.Bottom|AnchorStyles.Left|AnchorStyles.Right};Controls.Add(tabs);
   var home=Page("运行与连接"); var settings=Page("启动设置"); var logs=Page("运行日志");
+  var visual=Page("视觉设置");
+  visual.Controls.Add(L("图片识别 · 保存后重启服务生效",24,18,870,34,18,ink));
+  visual.Controls.Add(L("图片使用 OpenAI 接口；Ollama 兼容桥仍仅支持文本。",26,65,880,40,10,muted));
+  var vision=new CheckBox{Text="启用视觉",Checked=cfg.VisionEnabled,Location=new Point(27,120),Size=new Size(250,30)};visual.Controls.Add(vision);
+  var mmproj=FileField(visual,"视觉投影 GGUF (mmproj)",170,cfg.Mmproj,"Vision projector|*.gguf");
+  var visionGpu=new CheckBox{Text="使用 GPU 编码图片（额外占用显存）",Checked=cfg.VisionGpu,Location=new Point(27,250),Size=new Size(850,30)};visual.Controls.Add(visionGpu);
+  var imageTokens=N(visual,"每张图片 token 上限",310,27,64,4096,cfg.ImageMaxTokens);
+  visual.Controls.Add(L("16 GB 显存建议先用 CPU 编码、512 tokens。更高上限保留更多细节，也会增加处理时间。",26,400,880,55,10,muted));
+  var saveVision=B("保存视觉设置",27,478,220,40,accent);saveVision.Click+=(s,e)=>{try{if(vision.Checked&&!File.Exists(mmproj.Text))throw new Exception("请选择有效的视觉投影文件。");cfg.VisionEnabled=vision.Checked;cfg.Mmproj=mmproj.Text;cfg.VisionGpu=visionGpu.Checked;cfg.ImageMaxTokens=(int)imageTokens.Value;Save();Say("视觉设置已保存，重启服务后生效。");}catch(Exception x){Error(x);}};visual.Controls.Add(saveVision);
   status=L("正在检查服务…",24,20,840,42,21,ink);home.Controls.Add(status);
   detail=L("",26,67,870,45,10,muted);home.Controls.Add(detail);
   start=B("启动服务",26,123,170,46,accent);start.Click+=async(s,e)=>await StartServices();home.Controls.Add(start);
