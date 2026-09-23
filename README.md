@@ -8,7 +8,7 @@ It starts `llama-kvmem-server`, exposes its OpenAI-compatible endpoint, and prov
 
 ## Features
 
-- Start and stop the KVMem server without keeping a terminal open.
+- Start and stop the KVMem server without keeping a terminal open, including while the model is loading or busy.
 - Configure GGUF/model paths, 256K context, GPU history budget, generation reserve, and thinking budget.
 - Open the bundled browser chat UI.
 - Copy local and LAN endpoint addresses.
@@ -28,7 +28,7 @@ Model weights and the KVMem runtime are **not included**. Download them from the
 
 ## Quick start
 
-1. Download and extract the release ZIP, or build from source.
+1. Download and extract [KVMem Desktop v1.1.1](dist/KVMem-Desktop-v1.1.1.zip), or build from source. Verify the archive with [its SHA-256 file](dist/KVMem-Desktop-v1.1.1-SHA256.txt).
 2. Run `KVMem.exe`.
 3. In **启动设置**, select `llama-kvmem-server.exe` and the GGUF model.
 4. Save settings and select **启动服务**.
@@ -109,10 +109,11 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\build.ps1
 
 The project uses Windows Forms and the .NET Framework 4.x compiler included with Windows. Keep `KVMem.exe`, `control.ps1`, `ollama-kvmem-bridge.cjs`, and the icon in the same directory.
 
+To rebuild the distributable ZIP and checksum, run `powershell -NoProfile -ExecutionPolicy Bypass -File .\package.ps1`. It uses the blank `settings.example.json` as the packaged `settings.json`.
+
 ## Notes
 
 - The KVMem server is single-slot. Alternating unrelated chats can reduce prompt-cache reuse.
 - Closing the panel does not stop the server. Use **停止服务** to release VRAM.
 - The first very long request may need a client timeout of 900 seconds or more.
 - This launcher is an independent community utility and is not affiliated with the upstream KVMem, llama.cpp, Ollama, Qwen, LM Studio, or DSH projects.
-
