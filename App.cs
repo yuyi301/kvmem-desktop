@@ -28,6 +28,7 @@ public class Client:WebClient { protected override WebRequest GetWebRequest(Uri 
 public class App:Form {
  static string Root=AppDomain.CurrentDomain.BaseDirectory;
  static JavaScriptSerializer Json=new JavaScriptSerializer();
+ TextBox systemPrompt;
  Settings cfg; bool busy=false,polling=false; bool closing=false;
  Color bg=Color.FromArgb(16,24,36),card=Color.FromArgb(25,37,52),ink=Color.FromArgb(233,241,246),muted=Color.FromArgb(157,177,192),accent=Color.FromArgb(54,211,174);
  Label status,detail,notice,openAI,ollama,modelLabel,networkLabel; ComboBox network;CheckBox lan,thinking,vision,visionGpu;TextBox model,exe,log,mmproj;
@@ -41,6 +42,15 @@ public class App:Form {
   tabs=new TabControl{Location=new Point(26,118),Size=new Size(968,565),Anchor=AnchorStyles.Top|AnchorStyles.Bottom|AnchorStyles.Left|AnchorStyles.Right};Controls.Add(tabs);
   var home=Page("运行与连接"); var settings=Page("启动设置"); var logs=Page("运行日志");
   var visual=Page("视觉设置");
+  var prompts=Page("系统提示词");
+  prompts.Controls.Add(L("系统提示词",24,18,870,34,18,ink));
+  prompts.Controls.Add(L("设置角色、回答风格或固定规则。保存后，下次请求生效，无需重启模型。",26,65,880,40,10,muted));
+  systemPrompt=new TextBox{Multiline=true,AcceptsReturn=true,ScrollBars=ScrollBars.Vertical,MaxLength=1048576,Text=LoadSystemPrompt(),BackColor=bg,ForeColor=ink,Location=new Point(27,115),Size=new Size(870,280)};prompts.Controls.Add(systemPrompt);
+  var savePrompt=B("保存提示词",27,415,180,40,accent);savePrompt.Click+=(s,e)=>{try{SaveSystemPrompt();}catch(Exception x){Error(x);}};prompts.Controls.Add(savePrompt);
+  var clearPrompt=B("清空输入",222,415,150,40,card);clearPrompt.Click+=(s,e)=>{systemPrompt.Clear();Say("输入已清空；点击保存后取消默认系统提示词。");};prompts.Controls.Add(clearPrompt);
+  var chatPrompt=B("保存并打开聊天",387,415,230,40,card);chatPrompt.Click+=(s,e)=>{try{SaveSystemPrompt();Open("http://127.0.0.1:18201/chat");}catch(Exception x){Error(x);}};prompts.Controls.Add(chatPrompt);
+  var promptHelp=L("适用于桌面聊天及 18201 端口的 OpenAI / Ollama 接口。客户端自带系统提示词时优先使用客户端内容。\n留空并保存即可取消默认提示词；建议修改后开始新对话。",26,475,880,52,10,muted);prompts.Controls.Add(promptHelp);
+
   visual.Controls.Add(L("图片识别 · 保存后重启服务生效",24,18,870,34,18,ink));
   visual.Controls.Add(L("图片使用 OpenAI 接口；Ollama 兼容桥仍仅支持文本。",26,65,880,40,10,muted));
   vision=new CheckBox{Text="启用视觉",Checked=cfg.VisionEnabled,Location=new Point(27,120),Size=new Size(250,30)};visual.Controls.Add(vision);
@@ -53,8 +63,8 @@ public class App:Form {
   detail=L("",26,67,870,45,10,muted);home.Controls.Add(detail);
   start=B("启动服务",26,123,170,46,accent);start.Click+=async(s,e)=>await StartServices();home.Controls.Add(start);
   stop=B("停止服务",211,123,145,46,card);stop.Click+=async(s,e)=>await StopServices();home.Controls.Add(stop);
-  var chat=B("打开聊天",372,123,145,46,card);chat.Click+=(s,e)=>Open("http://127.0.0.1:18200/");home.Controls.Add(chat);
-  var local=B("复制本机地址",533,123,170,46,card);local.Click+=(s,e)=>Copy("http://127.0.0.1:18200/v1");home.Controls.Add(local);
+  var chat=B("打开聊天",372,123,145,46,card);chat.Click+=(s,e)=>Open("http://127.0.0.1:18201/chat");home.Controls.Add(chat);
+  var local=B("复制本机地址",533,123,170,46,card);local.Click+=(s,e)=>Copy("http://127.0.0.1:18201/v1");home.Controls.Add(local);
   home.Controls.Add(L("MAC / 局域网连接",26,194,500,28,13,accent));
   network=new ComboBox{Location=new Point(27,233),Size=new Size(650,30),ForeColor=Color.Black,BackColor=Color.White,DropDownStyle=ComboBoxStyle.DropDownList};home.Controls.Add(network); network.DrawMode=DrawMode.OwnerDrawFixed; network.ItemHeight=24; network.DrawItem+=(s,e)=>{e.DrawBackground(); if(e.Index>=0)using(var brush=new SolidBrush(Color.Black))e.Graphics.DrawString(network.Items[e.Index].ToString(),network.Font,brush,e.Bounds);};
   network.Visible=false; networkLabel=L("",27,233,655,32,12,ink); home.Controls.Add(networkLabel); var choose=B("选择网卡",720,229,176,36,card); choose.Click+=(s,e)=>{var menu=new ContextMenuStrip();for(int i=0;i<network.Items.Count;i++){int index=i;menu.Items.Add(network.Items[i].ToString(),null,(sender,evt)=>{network.SelectedIndex=index;UpdateAddresses();});}menu.Show(choose,new Point(0,choose.Height));};home.Controls.Add(choose); foreach(var n in Networks())network.Items.Add(n);
@@ -86,10 +96,13 @@ public class App:Form {
  Button B(string text,int x,int y,int w,int h,Color color){var b=new Button{Text=text,Location=new Point(x,y),Size=new Size(w,h),BackColor=color,ForeColor=color==accent?bg:ink,FlatStyle=FlatStyle.Flat,Cursor=Cursors.Hand};b.FlatAppearance.BorderColor=Color.FromArgb(65,85,103);return b;}
  TextBox FileField(Control parent,string name,int y,string value,string filter){parent.Controls.Add(L(name,26,y,830,25,10,muted));var t=new TextBox{Text=value,Location=new Point(27,y+28),Size=new Size(770,28)};parent.Controls.Add(t);var b=B("浏览",812,y+26,85,32,card);b.Click+=(s,e)=>{using(var d=new OpenFileDialog{Filter=filter,FileName=t.Text})if(d.ShowDialog()==DialogResult.OK)t.Text=d.FileName;};parent.Controls.Add(b);return t;}
  NumericUpDown N(Control p,string name,int y,int x,int min,int max,int value){p.Controls.Add(L(name,x,y,210,26,10,muted));var n=new NumericUpDown{Minimum=min,Maximum=max,Value=value,Increment=128,Location=new Point(x,y+35),Size=new Size(190,30),ThousandsSeparator=true};p.Controls.Add(n);return n;}
+
+ static string LoadSystemPrompt(){string p=Path.Combine(Root,"system-prompt.json");if(!File.Exists(p))return "";var value=Json.Deserialize<Dictionary<string,string>>(File.ReadAllText(p));if(value==null||!value.ContainsKey("Text")||value["Text"]==null)throw new Exception("system-prompt.json 格式无效，请从 .bak 恢复。");return value["Text"];}
+ void SaveSystemPrompt(){string p=Path.Combine(Root,"system-prompt.json"),temp=p+".tmp";File.WriteAllText(temp,Json.Serialize(new Dictionary<string,string>{{"Text",systemPrompt.Text}}),new UTF8Encoding(false));if(File.Exists(p))File.Replace(temp,p,p+".bak");else File.Move(temp,p);Say("系统提示词已保存，下次请求生效；修改后建议开始新对话。");}
  static Settings LoadSettings(){string p=Path.Combine(Root,"settings.json");return File.Exists(p)?Json.Deserialize<Settings>(File.ReadAllText(p)):new Settings();}
  void Save(){if(vision.Checked&&!File.Exists(mmproj.Text))throw new Exception("请选择有效的视觉投影 GGUF 文件。");if(!File.Exists(model.Text)||!File.Exists(exe.Text))throw new Exception("请检查模型和 KVMem 程序路径。");if((int)thinkingBudget.Value>(int)reserve.Value)throw new Exception("思考预算不能超过输出预留。");if(budget.Value+reserve.Value>context.Value)throw new Exception("GPU 历史预算与输出预留之和不能超过上下文容量。");if((int)budget.Value%128!=0||(int)reserve.Value%128!=0)throw new Exception("历史预算与输出预留应为128的倍数。");cfg.VisionEnabled=vision.Checked;cfg.Mmproj=mmproj.Text;cfg.VisionGpu=visionGpu.Checked;cfg.ImageMaxTokens=(int)imageTokens.Value;cfg.Model=model.Text;cfg.Executable=exe.Text;cfg.Context=(int)context.Value;cfg.Budget=(int)budget.Value;cfg.Reserve=(int)reserve.Value;cfg.ThinkingBudget=(int)thinkingBudget.Value;cfg.Thinking=thinking.Checked;cfg.LanEnabled=lan.Checked;var n=network.SelectedItem as NetworkItem;if(n!=null){cfg.LanAddress=n.Address;cfg.LanPrefix=n.Prefix;}File.WriteAllText(Path.Combine(Root,"settings.json"),Json.Serialize(cfg),new UTF8Encoding(false));UpdateAddresses();}
  static List<NetworkItem> Networks(){var items=new List<NetworkItem>();foreach(var n in NetworkInterface.GetAllNetworkInterfaces()){if(n.OperationalStatus!=OperationalStatus.Up||n.NetworkInterfaceType==NetworkInterfaceType.Loopback)continue;foreach(var a in n.GetIPProperties().UnicastAddresses){if(a.Address.AddressFamily!=AddressFamily.InterNetwork||a.IPv4Mask==null)continue;var b=a.IPv4Mask.GetAddressBytes();int prefix=0;foreach(byte v in b)for(int i=0;i<8;i++)if((v&(1<<i))!=0)prefix++;items.Add(new NetworkItem{Address=a.Address.ToString(),Prefix=prefix,Name=n.Name});}}return items.OrderBy(n=>n.Address.StartsWith("192.168.")?0:1).ToList();}
- void UpdateAddresses(){var n=network.SelectedItem as NetworkItem;string ip=n==null?"未找到局域网地址":n.Address; networkLabel.Text=n==null?"未检测到局域网网卡":n.ToString();openAI.Text="http://"+ip+":18200/v1";ollama.Text="http://"+ip+":18201";modelLabel.Text="OpenAI 模型："+Path.GetFileName(cfg.Model)+"\nOllama 兼容模型：qwen-kvmem:256k";}
+ void UpdateAddresses(){var n=network.SelectedItem as NetworkItem;string ip=n==null?"未找到局域网地址":n.Address; networkLabel.Text=n==null?"未检测到局域网网卡":n.ToString();openAI.Text="http://"+ip+":18201/v1";ollama.Text="http://"+ip+":18201";modelLabel.Text="OpenAI 模型："+Path.GetFileName(cfg.Model)+"\nOllama 兼容模型：qwen-kvmem:256k";}
  static string Get(string url){try{using(var c=new Client())return c.DownloadString(url);}catch{return "";}}
  static bool IsTrackedServerRunning(){try{string recordPath=Path.Combine(Root,"logs","server-process.json");if(!File.Exists(recordPath))return false;var record=Json.Deserialize<ProcessRecord>(File.ReadAllText(recordPath));using(var p=Process.GetProcessById(record.Id)){DateTime started=DateTime.Parse(record.StartTime).ToUniversalTime();return !p.HasExited&&Math.Abs((p.StartTime.ToUniversalTime()-started).TotalSeconds)<5&&string.Equals(Path.GetFileName(p.MainModule.FileName),"llama-kvmem-server.exe",StringComparison.OrdinalIgnoreCase);}}catch{return false;}}
  static bool CanStopServices(){return IsTrackedServerRunning()||PortPid(18200)>0||PortPid(18201)>0;}

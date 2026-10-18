@@ -22,17 +22,17 @@ It starts `llama-kvmem-server`, exposes its OpenAI-compatible endpoint, and prov
 - Windows x64 and an NVIDIA GPU supported by your KVMem runtime.
 - A downloaded Windows build of `kvmem-llama.cpp` containing `llama-kvmem-server.exe`.
 - A compatible GGUF model. This project was tested with `RVN-IQ3_XXS-mtp.gguf` on an RTX 4070 Ti SUPER 16 GB and 64 GB system RAM.
-- Node.js available as `node.exe` on `PATH` for the Ollama compatibility bridge. The OpenAI endpoint works without the bridge.
+- Node.js available as `node.exe` on `PATH` for the Ollama compatibility bridge. The displayed OpenAI endpoint and desktop chat use the bridge; the direct runtime API remains at port 18200.
 
 Model weights and the KVMem runtime are **not included**. Download them from their respective upstream projects and review their licenses.
 
 ## Quick start
 
-1. Download and extract [KVMem Desktop v1.1.1](dist/KVMem-Desktop-v1.1.1.zip), or build from source. Verify the archive with [its SHA-256 file](dist/KVMem-Desktop-v1.1.1-SHA256.txt).
+1. Download and extract [KVMem Desktop v1.2.0](dist/KVMem-Desktop-v1.2.0.zip), or build from source. Verify the archive with [its SHA-256 file](dist/KVMem-Desktop-v1.2.0-SHA256.txt).
 2. Run `KVMem.exe`.
 3. In **启动设置**, select `llama-kvmem-server.exe` and the GGUF model.
 4. Save settings and select **启动服务**.
-5. Open `http://127.0.0.1:18200/` or use the displayed API address.
+5. Open `http://127.0.0.1:18201/chat` or use the displayed API address.
 
 The default tested profile is:
 
@@ -43,6 +43,18 @@ The default tested profile is:
 - Thinking budget: `16384`
 
 The total context includes prompts, history, thinking, and output. A single generation cannot exceed the configured reserve.
+
+## System prompt
+
+Open **系统提示词** in the desktop launcher, enter multiline instructions, and click **保存提示词**. **清空输入** followed by save removes the default. It is stored separately in `system-prompt.json`, backed up as `.bak`, and read again for each request; no model restart is required. Start a new conversation after changing instructions.
+
+![System prompt settings](docs/system-prompt.png)
+
+The default is prepended only when the client has no `system` or `developer` message. Client messages (including an explicitly empty system message) take precedence. This applies to OpenAI `POST /v1/chat/completions` and Ollama `/api/chat` and `/api/generate` through port **18201**. The direct runtime endpoint on **18200** bypasses this default. Existing clients must change their base URL to `http://PC_LAN_IP:18201/v1` to use it.
+
+**打开聊天** opens the included text chat at `http://127.0.0.1:18201/chat`. It displays the saved prompt and supports streaming, thinking output, stop and new conversation. Conversation history stays in the page and clears on refresh. Configure the system prompt in the desktop app. The OpenAI proxy retains image/tool payloads; the Ollama adapter remains text-only. Other proxied OpenAI routes do not inject a prompt.
+
+Prompt files and their backups are ignored by Git and excluded from release packages.
 
 ## Vision
 
@@ -59,8 +71,8 @@ Use:
 | Field | Value |
 |---|---|
 | Protocol | `openai-completions` |
-| Local base URL | `http://127.0.0.1:18200/v1` |
-| LAN base URL | `http://PC_LAN_IP:18200/v1` |
+| Local base URL | `http://127.0.0.1:18201/v1` |
+| LAN base URL | `http://PC_LAN_IP:18201/v1` |
 | Model ID | Your GGUF filename, for example `RVN-IQ3_XXS-mtp.gguf` |
 | API key | Any placeholder, such as `kvmem-local` |
 | Context | `262144` |
@@ -107,7 +119,7 @@ Run in Windows PowerShell:
 powershell -NoProfile -ExecutionPolicy Bypass -File .\build.ps1
 ```
 
-The project uses Windows Forms and the .NET Framework 4.x compiler included with Windows. Keep `KVMem.exe`, `control.ps1`, `ollama-kvmem-bridge.cjs`, and the icon in the same directory.
+The project uses Windows Forms and the .NET Framework 4.x compiler included with Windows. Keep `KVMem.exe`, `control.ps1`, `ollama-kvmem-bridge.cjs`, `system-prompt.cjs`, `chat.html`, and the icon in the same directory.
 
 To rebuild the distributable ZIP and checksum, run `powershell -NoProfile -ExecutionPolicy Bypass -File .\package.ps1`. It uses the blank `settings.example.json` as the packaged `settings.json`.
 
