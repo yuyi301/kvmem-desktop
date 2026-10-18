@@ -1,4 +1,4 @@
-param([string]$Version = '1.1.1')
+param([string]$Version = '1.2.0')
 $ErrorActionPreference = 'Stop'
 $root = $PSScriptRoot
 $example = Get-Content -LiteralPath (Join-Path $root 'settings.example.json') -Raw | ConvertFrom-Json
@@ -22,6 +22,8 @@ $files = @{
     'KVMem.png' = 'KVMem.png'
     'control.ps1' = 'control.ps1'
     'ollama-kvmem-bridge.cjs' = 'ollama-kvmem-bridge.cjs'
+    'system-prompt.cjs' = 'system-prompt.cjs'
+    'chat.html' = 'chat.html'
     'LICENSE' = 'LICENSE'
     'README.md' = 'README.md'
     'README.zh-CN.md' = 'README.zh-CN.md'

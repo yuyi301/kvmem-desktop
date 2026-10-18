@@ -6,4 +6,8 @@ error.txt
 preview-1.png
 preview-2.png
 *.zip
+system-prompt.json*
+local-build/
+apply-feature.cjs
+preview-*.png
 
